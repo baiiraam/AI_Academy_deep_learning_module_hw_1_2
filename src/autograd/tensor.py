@@ -65,16 +65,50 @@ class Tensor:
         )
 
         def _backward():
-            # ∂out/∂self = 1, ∂out/∂other = 1
+
             if self.requires_grad:
-                self.grad += out.grad * 1.0
+                grad_self = out.grad
+
+                while grad_self.ndim > self.data.ndim:
+                    grad_self = grad_self.sum(axis=0, keepdims=False)
+
+                if self.data.size > 1:
+                    axes = [
+                        i
+                        for i in range(len(self.data.shape))
+                        if self.data.shape[i] == 1 and grad_self.shape[i] > 1
+                    ]
+                    if axes:
+                        grad_self = grad_self.sum(axis=tuple(axes), keepdims=False)
+
+                if grad_self.shape != self.data.shape:
+                    if self.data.size == 1:
+                        grad_self = grad_self.sum()
+                    else:
+                        grad_self = grad_self.reshape(self.data.shape)
+                self.grad += grad_self
+
             if other.requires_grad:
-                # Handle bias addition: sum over batch dimension if needed
-                if other.data.ndim == 1 and out.grad.ndim == 2:
-                    # Other is a bias vector, sum over batch dimension
-                    other.grad += out.grad.sum(axis=0)
-                else:
-                    other.grad += out.grad * 1.0
+                grad_other = out.grad
+
+                while grad_other.ndim > other.data.ndim:
+                    grad_other = grad_other.sum(axis=0, keepdims=False)
+
+                if other.data.size > 1:
+                    axes = [
+                        i
+                        for i in range(len(other.data.shape))
+                        if other.data.shape[i] == 1 and grad_other.shape[i] > 1
+                    ]
+                    if axes:
+                        grad_other = grad_other.sum(axis=tuple(axes), keepdims=False)
+
+                if grad_other.shape != other.data.shape:
+                    if other.data.size == 1:
+                        grad_other = grad_other.sum()
+                    else:
+                        grad_other = grad_other.reshape(other.data.shape)
+                other.grad += grad_other
 
         out._backward = _backward
         return out
@@ -94,46 +128,41 @@ class Tensor:
         )
 
         def _backward():
-            # ∂out/∂self = other, ∂out/∂other = self
             if self.requires_grad:
-                if other.data.size == 1:
-                    # Scalar multiplication: gradient is broadcast
-                    self.grad += out.grad * other.data
-                elif out.grad.shape != self.data.shape:
-                    # Broadcasting case: sum over extra dimensions
-                    axes = tuple(
+                grad_self = out.grad * other.data
+                # Reduce to match self.data shape
+                while grad_self.ndim > self.data.ndim:
+                    grad_self = grad_self.sum(axis=0, keepdims=False)
+                # Handle broadcasting
+                if grad_self.shape != self.data.shape:
+                    axes = [
                         i
-                        for i in range(out.grad.ndim)
-                        if i >= self.data.ndim
-                        or out.grad.shape[i] != self.data.shape[i]
-                    )
-                    grad_self = (out.grad * other.data).sum(axis=axes, keepdims=False)
-                    # Reshape to match self.data shape if needed
-                    if grad_self.shape != self.data.shape:
-                        grad_self = grad_self.reshape(self.data.shape)
-                    self.grad += grad_self
-                else:
-                    self.grad += out.grad * other.data
+                        for i in range(grad_self.ndim)
+                        if i < len(self.data.shape) and self.data.shape[i] == 1
+                    ]
+                    if axes:
+                        grad_self = grad_self.sum(axis=tuple(axes), keepdims=False)
+                # Final reshape
+                if grad_self.shape != self.data.shape:
+                    grad_self = grad_self.reshape(self.data.shape)
+                self.grad += grad_self
 
             if other.requires_grad:
-                if self.data.size == 1:
-                    # Scalar multiplication: sum over all dimensions
-                    other.grad += (out.grad * self.data).sum()
-                elif out.grad.shape != other.data.shape:
-                    # Broadcasting case: sum over extra dimensions
-                    axes = tuple(
+                grad_other = out.grad * self.data
+                # Reduce to match other.data shape
+                while grad_other.ndim > other.data.ndim:
+                    grad_other = grad_other.sum(axis=0, keepdims=False)
+                if grad_other.shape != other.data.shape:
+                    axes = [
                         i
-                        for i in range(out.grad.ndim)
-                        if i >= other.data.ndim
-                        or out.grad.shape[i] != other.data.shape[i]
-                    )
-                    grad_other = (out.grad * self.data).sum(axis=axes, keepdims=False)
-                    # Reshape to match other.data shape if needed
-                    if grad_other.shape != other.data.shape:
-                        grad_other = grad_other.reshape(other.data.shape)
-                    other.grad += grad_other
-                else:
-                    other.grad += out.grad * self.data
+                        for i in range(grad_other.ndim)
+                        if i < len(other.data.shape) and other.data.shape[i] == 1
+                    ]
+                    if axes:
+                        grad_other = grad_other.sum(axis=tuple(axes), keepdims=False)
+                if grad_other.shape != other.data.shape:
+                    grad_other = grad_other.reshape(other.data.shape)
+                other.grad += grad_other
 
         out._backward = _backward
         return out

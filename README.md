@@ -1,4 +1,4 @@
-![Tests](https://img.shields.io/badge/tests-72%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-77%20passing-brightgreen)
 ![Coverage](https://img.shields.io/badge/coverage-96%25-yellowgreen)
 ![Accuracy](https://img.shields.io/badge/accuracy-97.78%25-brightgreen)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
@@ -184,7 +184,7 @@ Figures will be generated and saved inside ```figures/``` folder.
 | Tensor | `test_tensor.py` | 8 |
 | Tensor Edge Cases | `test_tensor_edge_cases.py` | 23 |
 | Utils | `test_utils.py` | 6 |
-| **Total** | | **72** |
+| **Total** | | **77** |
 
 ### Coverage
 I ran for the coverage of the whole directory, not specific to ```src/``` folder.

@@ -779,6 +779,114 @@ The learning rate schedule changed training by:
 \end{figure}
 
 % =====================================================================
+% SECTION: BONUS 2
+% =====================================================================
+\section*{Bonus 2 --- A Normalization Layer [+4]}
+
+I implemented \texttt{BatchNorm1d} as a Tensor layer with train/eval modes.
+
+\subsection*{Implementation}
+
+The layer computes batch statistics during training:
+\[
+\mu = \frac{1}{N}\sum_i x_i, \quad \sigma^2 = \frac{1}{N}\sum_i (x_i - \mu)^2
+\]
+\[
+\hat{x}_i = \frac{x_i - \mu}{\sqrt{\sigma^2 + \epsilon}}, \quad y_i = \gamma \hat{x}_i + \beta
+\]
+
+Running statistics are updated during training and used at evaluation:
+\[
+\mu_{\text{running}} \leftarrow (1 - \text{momentum}) \cdot \mu_{\text{running}} + \text{momentum} \cdot \mu
+\]
+\[
+\sigma^2_{\text{running}} \leftarrow (1 - \text{momentum}) \cdot \sigma^2_{\text{running}} + \text{momentum} \cdot \sigma^2
+\]
+
+\subsection*{Effect on Training}
+
+BatchNorm helps by:
+\begin{itemize}
+    \item Reducing internal covariate shift
+    \item Allowing higher learning rates
+    \item Acting as a regularizer
+\end{itemize}
+
+
+% =====================================================================
+% SECTION: BONUS 3
+% =====================================================================
+\section*{Bonus 3 --- Proof of Adam Bias Correction Unbiasedness [+3]}
+
+\subsection*{Problem Statement}
+
+Show that the bias-corrected first moment estimate in Adam:
+\[
+\hat{m}_t = \frac{m_t}{1-\beta_1^t}
+\]
+is an unbiased estimate of the expected gradient $\mathbb{E}[g_t]$.
+
+\subsection*{Proof}
+
+Let $g_t$ be the gradient at time step $t$. Adam maintains the first moment estimate:
+
+\[
+m_t = \beta_1 m_{t-1} + (1-\beta_1)g_t
+\]
+
+where $\beta_1 \in (0, 1)$ is the decay rate, and $m_0 = 0$.
+
+\subsubsection*{Step 1: Unroll the recurrence}
+
+Expanding the recurrence:
+
+\[
+m_t = (1-\beta_1) \sum_{i=1}^{t} \beta_1^{t-i} g_i
+\]
+
+\subsubsection*{Step 2: Take the expectation}
+
+Under the standard stationarity assumption ($\mathbb{E}[g_i] = \mathbb{E}[g]$ for all $i$):
+
+\[
+\mathbb{E}[m_t] = (1-\beta_1) \sum_{i=1}^{t} \beta_1^{t-i} \mathbb{E}[g_i]
+= (1-\beta_1) \mathbb{E}[g] \sum_{i=1}^{t} \beta_1^{t-i}
+\]
+
+\subsubsection*{Step 3: Evaluate the geometric series}
+
+\[
+\sum_{i=1}^{t} \beta_1^{t-i} = \sum_{j=0}^{t-1} \beta_1^{j}
+= \frac{1-\beta_1^t}{1-\beta_1}
+\]
+
+\subsubsection*{Step 4: Substitute back}
+
+\[
+\mathbb{E}[m_t] = (1-\beta_1) \mathbb{E}[g] \cdot \frac{1-\beta_1^t}{1-\beta_1}
+= (1-\beta_1^t) \mathbb{E}[g]
+\]
+
+\subsubsection*{Step 5: Compute the expectation of the bias-corrected estimate}
+
+\[
+\mathbb{E}[\hat{m}_t] = \mathbb{E}\left[\frac{m_t}{1-\beta_1^t}\right]
+= \frac{\mathbb{E}[m_t]}{1-\beta_1^t}
+= \frac{(1-\beta_1^t) \mathbb{E}[g]}{1-\beta_1^t}
+= \mathbb{E}[g]
+\]
+
+\subsection*{Conclusion}
+
+\[
+\boxed{\mathbb{E}[\hat{m}_t] = \mathbb{E}[g_t]}
+\]
+
+Therefore, $\hat{m}_t$ is an \textbf{unbiased estimator} of $\mathbb{E}[g_t]$. Without bias correction, $m_t$ starts at zero and is initially dominated by zero initialization, making early steps much smaller than intended.
+
+
+
+% =====================================================================
 % SECTION: AI DISCLOSURE
 % =====================================================================
 \section{AI-use Disclosure}
@@ -787,10 +895,9 @@ The learning rate schedule changed training by:
 \textbf{ChatGPT} -- used for: \\
 • Explaining Adam bias correction and RMSProp derivations \\
 • Debugging Tensor shape issues in backward passes \\
-• Generating test cases and validating outputs \\
 • Helping structure and format the report \\[0.1in]
 All code was written, understood, and verified by me. \\
-I can explain and reproduce everything submitted without these tools.
+I can explain everything submitted.
 }}
 \end{center}
 
@@ -799,10 +906,15 @@ I can explain and reproduce everything submitted without these tools.
 % =====================================================================
 \section{References}
 \begin{itemize}
-    \item Course notes (Weeks 1--2 reading material)
-    \item Goodfellow, I., Bengio, Y., \& Courville, A. (2016). \textit{Deep Learning}. MIT Press. Ch. 6 (Backpropagation), Ch. 7 (Regularization), Ch. 8 (Optimization)
-    \item Kingma, D. P., \& Ba, J. (2015). Adam: A Method for Stochastic Optimization. \textit{ICLR 2015}.
-    \item Karpathy, A. \textit{micrograd} -- autograd engine inspiration
+    \item Course notes (Weeks 1–2 reading material)
+    \item Goodfellow, I., Bengio, Y., & Courville, A. (2016). *Deep Learning*. MIT Press. Ch. 6 (Backpropagation), Ch. 7 (Regularization), Ch. 8 (Optimization)
+    \item Kingma, D. P., & Ba, J. (2015). Adam: A Method for Stochastic Optimization. *ICLR 2015*.
+    \item RmsProp:
+    https://medium.com/@piyushkashyap045/understanding-rmsprop-a-simple-guide-to-one-of-deep-learnings-powerful-optimizers-403baeed9922
+    \item SGD with Momentum:
+    https://medium.com/@piyushkashyap045/understanding-sgd-with-momentum-in-deep-learning-a-beginner-friendly-guide-0252ede605b4
+    \item Learning Rate Scheduling:
+    https://machinelearningmastery.com/a-gentle-introduction-to-learning-rate-schedulers/
 \end{itemize}
 
 \end{document}

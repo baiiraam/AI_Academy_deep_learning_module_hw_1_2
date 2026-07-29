@@ -97,3 +97,120 @@ class Dropout(Module):
 
     def eval(self) -> None:
         self.training = False
+
+
+class BatchNorm1d(Module):
+    """
+    Batch Normalization for 1D data (features dimension is last).
+    """
+
+    def __init__(
+        self,
+        num_features: int,
+        eps: float = 1e-5,
+        momentum: float = 0.1,
+        _name: str | None = None,
+    ):
+        super().__init__()
+        self.num_features = num_features
+        self.eps = eps
+        self.momentum = momentum
+        self.training = True
+
+        self.gamma = Tensor(
+            np.ones(num_features), _name=f"{_name}_gamma" if _name else "gamma"
+        )
+        self.beta = Tensor(
+            np.zeros(num_features), _name=f"{_name}_beta" if _name else "beta"
+        )
+
+        self.running_mean = np.zeros(num_features)
+        self.running_var = np.ones(num_features)
+
+        self._trainable = [self.gamma, self.beta]
+
+    def forward(self, x: Tensor) -> Tensor:
+        if self.training:
+            mean = x.data.mean(axis=0, keepdims=True)
+            var = x.data.var(axis=0, keepdims=True)
+
+            self.running_mean = (
+                1 - self.momentum
+            ) * self.running_mean + self.momentum * mean.flatten()
+            self.running_var = (
+                1 - self.momentum
+            ) * self.running_var + self.momentum * var.flatten()
+
+            mean_tensor = Tensor(mean, _name="batch_mean")
+            var_tensor = Tensor(var, _name="batch_var")
+            one_tensor = Tensor(np.ones((1, self.num_features)), _name="one")
+            eps_tensor = Tensor(np.full((1, self.num_features), self.eps), _name="eps")
+
+            x_centered = x - mean_tensor
+
+            inv_std = one_tensor / ((var_tensor + eps_tensor) ** 0.5)
+
+            x_norm = x_centered * inv_std
+
+            # ⚠️ CRITICAL: Multiplying by gamma
+            scaled = x_norm * self.gamma
+            out = scaled + self.beta
+            return out
+        else:
+            # Evaluation mode
+            mean_tensor = Tensor(self.running_mean.reshape(1, -1), _name="running_mean")
+            var_tensor = Tensor(self.running_var.reshape(1, -1), _name="running_var")
+            one_tensor = Tensor(np.ones((1, self.num_features)), _name="one")
+            eps_tensor = Tensor(np.full((1, self.num_features), self.eps), _name="eps")
+
+            x_centered = x - mean_tensor
+            inv_std = one_tensor / ((var_tensor + eps_tensor) ** 0.5)
+            x_norm = x_centered * inv_std
+
+            out = x_norm * self.gamma + self.beta
+            return out
+
+    def parameters(self) -> list:
+        return self._trainable
+
+    def train(self) -> None:
+        self.training = True
+
+    def eval(self) -> None:
+        self.training = False
+
+
+class LayerNorm(Module):
+    def __init__(self, num_features: int, eps: float = 1e-5, _name: str | None = None):
+        super().__init__()
+        self.num_features = num_features
+        self.eps = eps
+
+        self.gamma = Tensor(
+            np.ones(num_features), _name=f"{_name}_gamma" if _name else "gamma"
+        )
+        self.beta = Tensor(
+            np.zeros(num_features), _name=f"{_name}_beta" if _name else "beta"
+        )
+
+        self._trainable = [self.gamma, self.beta]
+
+    def forward(self, x: Tensor) -> Tensor:
+        # Compute statistics using .data
+        mean = x.data.mean(axis=1, keepdims=True)  # (N, 1)
+        var = x.data.var(axis=1, keepdims=True)  # (N, 1)
+
+        mean_tensor = Tensor(mean, _name="layer_mean")
+        var_tensor = Tensor(var, _name="layer_var")
+        one_tensor = Tensor(np.ones(mean.shape), _name="one")
+        eps_tensor = Tensor(np.full(mean.shape, self.eps), _name="eps")
+
+        x_centered = x - mean_tensor
+        inv_std = one_tensor / ((var_tensor + eps_tensor) ** 0.5)
+        x_norm = x_centered * inv_std
+
+        out = x_norm * self.gamma + self.beta
+        return out
+
+    def parameters(self) -> list:
+        return self._trainable

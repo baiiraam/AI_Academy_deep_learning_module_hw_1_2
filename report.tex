@@ -61,7 +61,7 @@
     \textbf{Name:} Bayram \\[0.05in]
     \textbf{Student ID:} 12345 \\[0.05in]
     \textbf{Section/Group:} DL-A \\[0.05in]
-    \textbf{Submission Date:} 29 July 2026 \\[0.05in]
+    \textbf{Submission Date:} 1 August 2026 \\[0.05in]
     \textbf{Hours Spent:} 14 h
 }
 \date{}
@@ -525,9 +525,7 @@ The gradient check is implemented in \texttt{src/utils.gradient\_check()} and as
 
 \noindent\textbf{Analysis:}
 \begin{itemize}
-    \item Most learning happens in the first 20 epochs, with accuracy rising from $\sim$36\% to $\sim$95\%
-    \item Loss decreases steadily without significant oscillation, indicating stable training
-    \item Validation accuracy closely tracks training accuracy, showing no overfitting
+    \item Most learning happens in the first 20 epochs...
     \item Best validation accuracy of 97.22\% was achieved at epoch 33
     \item Early stopping triggered at epoch 48, saving the best model
     \item Final test accuracy: \textbf{97.78\%} (well above the 95\% target)
@@ -546,7 +544,8 @@ The gradient check is implemented in \texttt{src/utils.gradient\_check()} and as
 \begin{itemize}
     \item \textbf{Adam} converged fastest, reaching 93\% validation accuracy in just 20 epochs
     \item \textbf{RMSProp with schedule} achieved the highest validation accuracy at 95\%
-    \item \textbf{Momentum} was slower but outperformed SGD, reaching 91\% validation accuracy
+    \item \textbf{RMSProp} reached 94\% validation accuracy in 28 epochs
+    \item \textbf{Momentum} reached 91\% validation accuracy in 38 epochs
     \item \textbf{SGD} struggled to exceed 50\% validation accuracy within 50 epochs
 \end{itemize}
 
@@ -761,8 +760,6 @@ The schedule was applied to RMSProp with:
 \end{itemize}
 
 \subsection*{Effect on Training}
-
-The learning rate schedule changed training by:
 \begin{itemize}
     \item Warm-up (first 5 epochs) gradually increased the learning rate from 0 to 0.001, allowing stable early training
     \item Cosine decay after warm-up helped fine-tune the model in later epochs
